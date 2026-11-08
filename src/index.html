@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>simple-pm</title>
+  <link rel="stylesheet" href="vendor/bootstrap.min.css">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <nav class="navbar navbar-expand bg-body-tertiary border-bottom">
+    <div class="container-fluid">
+      <a class="navbar-brand fw-semibold" href="#/">simple-pm</a>
+      <ol class="breadcrumb mb-0 me-auto" id="crumbs"></ol>
+      <div class="d-flex align-items-center gap-2">
+        <label for="user-picker" class="small text-body-secondary text-nowrap">Acting as</label>
+        <select id="user-picker" class="form-select form-select-sm"></select>
+        <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-new-user" title="New user" aria-label="New user">+</button>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container-fluid py-3">
+    <div id="alerts"></div>
+    <main id="main"></main>
+  </div>
+
+  <!-- New item dialog, opened from the project and item views (js/item-form.js) -->
+  <div class="modal fade" id="new-item" tabindex="-1" aria-labelledby="new-item-title" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <form class="modal-content" id="new-item-form" novalidate>
+        <div class="modal-header">
+          <h5 class="modal-title" id="new-item-title">New item</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label" for="ni-title">Title</label>
+              <input class="form-control" id="ni-title" name="title" required maxlength="300">
+            </div>
+            <div class="col-sm-4"><label class="form-label" for="ni-type">Type</label><select class="form-select" id="ni-type" name="type"></select></div>
+            <div class="col-sm-4"><label class="form-label" for="ni-priority">Priority</label><select class="form-select" id="ni-priority" name="priority"></select></div>
+            <div class="col-sm-4"><label class="form-label" for="ni-assignee">Assignee</label><select class="form-select" id="ni-assignee" name="assignee"></select></div>
+            <div class="col-sm-6"><label class="form-label" for="ni-parent">Parent</label><input class="form-control" id="ni-parent" name="parent" placeholder="e.g. DSE-12"></div>
+            <div class="col-sm-6"><label class="form-label" for="ni-labels">Labels</label><input class="form-control" id="ni-labels" name="labels" placeholder="comma separated"></div>
+            <div class="col-12">
+              <label class="form-label" for="ni-desc">Description</label>
+              <textarea class="form-control" id="ni-desc" name="description" rows="6"></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <span class="me-auto small text-body-secondary" id="ni-project"></span>
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Create</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- New user dialog (js/user-form.js) -->
+  <div class="modal fade" id="new-user" tabindex="-1" aria-labelledby="new-user-title" aria-hidden="true">
+    <div class="modal-dialog modal-sm">
+      <form class="modal-content" id="new-user-form" novalidate>
+        <div class="modal-header">
+          <h5 class="modal-title" id="new-user-title">New user</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <label class="form-label" for="nu-name">Name</label>
+          <input class="form-control" id="nu-name" name="name" required maxlength="40" autocomplete="off"
+                 pattern="[a-z0-9][a-z0-9_.\-]{0,39}" aria-describedby="nu-help">
+          <div class="form-text" id="nu-help">Lowercase a-z, 0-9, <code>_ . -</code>; up to 40 characters.</div>
+          <div class="invalid-feedback">Use lowercase letters, digits, <code>_ . -</code>, starting with a letter or digit.</div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Create and use</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="vendor/bootstrap.bundle.min.js"></script>
+  <script src="js/util.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/item-form.js"></script>
+  <script src="js/user-form.js"></script>
+  <script src="js/projects.js"></script>
+  <script src="js/project.js"></script>
+  <script src="js/item.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
