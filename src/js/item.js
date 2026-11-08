@@ -11,86 +11,97 @@ const ItemView = {
     if (!App.isCurrent(seq)) return;
 
     App.crumbs([[item.project, `#/p/${encodeURIComponent(item.project)}?open=true`], [item.id, null]]);
-    const ro = App.canWrite() ? '' : 'disabled';
-    main.innerHTML = `
-      <div class="row g-4">
-        <div class="col-lg-8">
-          <div class="text-body-secondary small mb-1">${U.esc(item.type)} · ${U.esc(item.id)} · reported by ${U.esc(item.reporter)} · created ${U.esc(U.date(item.createdAt))}</div>
-          <h1 class="h4">${U.esc(item.title)} ${U.statusBadge(item.status)}</h1>
-          ${item.parent ? `<div class="mb-2 small">Parent: <a href="#/i/${U.esc(item.parent)}">${U.esc(item.parent)}</a></div>` : ''}
-          <div class="card mb-4"><div class="card-body text-pre">${item.description ? U.richText(item.description) : '<span class="text-body-secondary">No description.</span>'}</div></div>
-
-          <div class="d-flex align-items-center mb-2">
-            <h2 class="h6 mb-0 me-auto">Children (${children.length})</h2>
-            <button class="btn btn-outline-primary btn-sm" id="btn-child" ${ro}>Add child</button>
-          </div>
-          ${ItemView.childrenHtml(children)}
-
-          <h2 class="h6 mt-4">Comments (${comments.length})</h2>
-          <div class="mb-3">${comments.map(ItemView.commentHtml).join('') || '<p class="text-body-secondary small">No comments yet.</p>'}</div>
-          <form id="comment-form">
-            <label class="form-label visually-hidden" for="comment-body">Comment</label>
-            <textarea class="form-control mb-2" id="comment-body" rows="3" placeholder="${App.canWrite() ? 'Write a comment' : 'Pick a user to comment'}" required ${ro}></textarea>
-            <button class="btn btn-primary btn-sm" type="submit" ${ro}>Comment</button>
-          </form>
-        </div>
-        <div class="col-lg-4">${ItemView.formHtml(item, ro)}</div>
-      </div>`;
-
-    main.querySelector('#btn-child').addEventListener('click', () =>
-      ItemForm.open({ project: item.project, parent: item.id }));
-    main.querySelector('#comment-form').addEventListener('submit', async e => {
-      e.preventDefault();
-      const body = main.querySelector('#comment-body').value.trim();
-      if (!body) return;
-      try {
-        await Api.addComment(item.id, body);
-        App.route();
-      } catch (err) { App.error(err); }
+    const ro = !App.canWrite();
+    const commentBody = h('textarea', {
+      class: 'form-control mb-2', id: 'comment-body', rows: 3, required: true, disabled: ro,
+      placeholder: ro ? 'Pick a user to comment' : 'Write a comment',
     });
-    main.querySelector('#edit-form').addEventListener('submit', e => { e.preventDefault(); ItemView.save(item, e.target); });
+    const commentForm = h('form', { onsubmit: e => { e.preventDefault(); ItemView.comment(item, commentBody); } },
+      h('label', { class: 'form-label visually-hidden', for: 'comment-body' }, 'Comment'),
+      commentBody,
+      h('button', { class: 'btn btn-primary btn-sm', type: 'submit', disabled: ro }, 'Comment'));
+
+    main.replaceChildren(h('div', { class: 'row g-4' },
+      h('div', { class: 'col-lg-8' },
+        h('div', { class: 'text-body-secondary small mb-1' },
+          `${item.type} · ${item.id} · reported by ${item.reporter} · created ${U.date(item.createdAt)}`),
+        h('h1', { class: 'h4' }, item.title, ' ', U.statusBadge(item.status)),
+        item.parent && h('div', { class: 'mb-2 small' }, 'Parent: ', h('a', { href: `#/i/${item.parent}` }, item.parent)),
+        h('div', { class: 'card mb-4' }, h('div', { class: 'card-body text-pre' },
+          item.description
+            ? U.richText(item.description)
+            : h('span', { class: 'text-body-secondary' }, 'No description.'))),
+
+        h('div', { class: 'd-flex align-items-center mb-2' },
+          h('h2', { class: 'h6 mb-0 me-auto' }, `Children (${children.length})`),
+          h('button', {
+            class: 'btn btn-outline-primary btn-sm', disabled: ro,
+            onclick: () => ItemForm.open({ project: item.project, parent: item.id }),
+          }, 'Add child')),
+        ItemView.children(children),
+
+        h('h2', { class: 'h6 mt-4' }, `Comments (${comments.length})`),
+        h('div', { class: 'mb-3' },
+          comments.length ? comments.map(ItemView.commentBlock)
+            : h('p', { class: 'text-body-secondary small' }, 'No comments yet.')),
+        commentForm),
+      h('div', { class: 'col-lg-4' }, ItemView.form(item, ro))));
   },
 
-  childrenHtml(children) {
-    if (!children.length) return '<p class="text-body-secondary small">No children.</p>';
-    return `<div class="table-responsive"><table class="table table-hover table-sm items-table mb-0"><tbody>${
-      children.map(c => `<tr data-href="#/i/${U.esc(c.id)}">
-        <td class="col-id"><a href="#/i/${U.esc(c.id)}">${U.esc(c.id)}</a></td>
-        <td class="small">${U.esc(c.type)}</td><td class="col-title">${U.esc(c.title)}</td>
-        <td>${U.statusBadge(c.status)}</td><td class="small">${U.esc(c.assignee || '')}</td></tr>`).join('')
-    }</tbody></table></div>`;
+  async comment(item, textarea) {
+    const body = textarea.value.trim();
+    if (!body) return;
+    try {
+      await Api.addComment(item.id, body);
+      App.route();
+    } catch (err) { App.error(err); }
   },
 
-  commentHtml(c) {
-    return `<div class="comment py-2">
-      <div class="small text-body-secondary"><strong class="text-body">${U.esc(c.author)}</strong> · ${U.esc(U.date(c.createdAt))}</div>
-      <div class="text-pre">${U.richText(c.body)}</div>
-    </div>`;
+  children(children) {
+    if (!children.length) return h('p', { class: 'text-body-secondary small' }, 'No children.');
+    return h('div', { class: 'table-responsive' },
+      h('table', { class: 'table table-hover table-sm items-table mb-0' },
+        h('tbody', {}, children.map(c => h('tr', { 'data-href': `#/i/${c.id}` },
+          h('td', { class: 'col-id' }, h('a', { href: `#/i/${c.id}` }, c.id)),
+          h('td', { class: 'small' }, c.type),
+          h('td', { class: 'col-title' }, c.title),
+          h('td', {}, U.statusBadge(c.status)),
+          h('td', { class: 'small' }, c.assignee))))));
   },
 
-  formHtml(item, ro) {
+  commentBlock(c) {
+    return h('div', { class: 'comment py-2' },
+      h('div', { class: 'small text-body-secondary' },
+        h('strong', { class: 'text-body' }, c.author), ` · ${U.date(c.createdAt)}`),
+      h('div', { class: 'text-pre' }, U.richText(c.body)));
+  },
+
+  form(item, ro) {
+    const field = (name, label, control, cls) =>
+      h('div', { class: cls || 'mb-2' }, h('label', { class: 'form-label small', for: `ef-${name}` }, label), control);
     const sel = (name, values, value, empty) =>
-      `<select class="form-select form-select-sm" id="ef-${name}" name="${name}" ${ro}>${U.options(values, value, empty === undefined ? {} : { empty })}</select>`;
-    return `
-      <form class="card" id="edit-form"><div class="card-body">
-        <h2 class="h6">Details</h2>
-        <div class="mb-2"><label class="form-label small" for="ef-title">Title</label>
-          <input class="form-control form-control-sm" id="ef-title" name="title" value="${U.esc(item.title)}" required ${ro}></div>
-        <div class="row g-2 mb-2">
-          <div class="col-6"><label class="form-label small" for="ef-status">Status</label>${sel('status', App.meta.statuses, item.status)}</div>
-          <div class="col-6"><label class="form-label small" for="ef-priority">Priority</label>${sel('priority', App.meta.priorities, item.priority)}</div>
-          <div class="col-6"><label class="form-label small" for="ef-type">Type</label>${sel('type', App.meta.types, item.type)}</div>
-          <div class="col-6"><label class="form-label small" for="ef-assignee">Assignee</label>${sel('assignee', App.userNames(), item.assignee || '', '(none)')}</div>
-        </div>
-        <div class="mb-2"><label class="form-label small" for="ef-parent">Parent</label>
-          <input class="form-control form-control-sm" id="ef-parent" name="parent" value="${U.esc(item.parent || '')}" ${ro}></div>
-        <div class="mb-2"><label class="form-label small" for="ef-labels">Labels</label>
-          <input class="form-control form-control-sm" id="ef-labels" name="labels" value="${U.esc((item.labels || []).join(', '))}" ${ro}></div>
-        <div class="mb-3"><label class="form-label small" for="ef-description">Description</label>
-          <textarea class="form-control form-control-sm" id="ef-description" name="description" rows="8" ${ro}>${U.esc(item.description)}</textarea></div>
-        <button class="btn btn-primary btn-sm" type="submit" ${ro}>Save</button>
-        <div class="small text-body-secondary mt-2">Updated ${U.esc(U.date(item.updatedAt))}</div>
-      </div></form>`;
+      h('select', { class: 'form-select form-select-sm', id: `ef-${name}`, name, disabled: ro },
+        U.options(values, value, empty === undefined ? {} : { empty }));
+    const input = (name, value, required) =>
+      h('input', { class: 'form-control form-control-sm', id: `ef-${name}`, name, value, required, disabled: ro });
+
+    const form = h('form', { class: 'card', onsubmit: e => { e.preventDefault(); ItemView.save(item, form); } },
+      h('div', { class: 'card-body' },
+        h('h2', { class: 'h6' }, 'Details'),
+        field('title', 'Title', input('title', item.title, true)),
+        h('div', { class: 'row g-2 mb-2' },
+          field('status', 'Status', sel('status', App.meta.statuses, item.status), 'col-6'),
+          field('priority', 'Priority', sel('priority', App.meta.priorities, item.priority), 'col-6'),
+          field('type', 'Type', sel('type', App.meta.types, item.type), 'col-6'),
+          field('assignee', 'Assignee', sel('assignee', App.userNames(), item.assignee || '', '(none)'), 'col-6')),
+        field('parent', 'Parent', input('parent', item.parent || '')),
+        field('labels', 'Labels', input('labels', (item.labels || []).join(', '))),
+        field('description', 'Description',
+          h('textarea', { class: 'form-control form-control-sm', id: 'ef-description', name: 'description', rows: 8, disabled: ro },
+            item.description), 'mb-3'),
+        h('button', { class: 'btn btn-primary btn-sm', type: 'submit', disabled: ro }, 'Save'),
+        h('div', { class: 'small text-body-secondary mt-2' }, `Updated ${U.date(item.updatedAt)}`)));
+    return form;
   },
 
   async save(item, form) {

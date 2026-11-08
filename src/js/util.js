@@ -1,15 +1,26 @@
-// Small helpers shared by all views: HTML escaping, formatting, badges and hash-route parsing.
+// Small helpers shared by all views: the DOM builder h(), formatting, badges and hash-route parsing.
 'use strict';
 
-const U = {
-  esc(value) {
-    return String(value ?? '').replace(/[&<>"']/g, c =>
-      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  },
+// h('a', { class: 'x', href: '#/p', onclick: fn }, 'text', child, [more])
+// Builds a real element. Strings become text nodes (never parsed as HTML), so values need no escaping.
+// null / undefined / false attributes and children are skipped; true gives a bare attribute (disabled).
+// Attributes named onXxx are event listeners.
+function h(tag, attrs, ...children) {
+  const el = document.createElement(tag);
+  for (const [name, value] of Object.entries(attrs || {})) {
+    if (value === false || value === null || value === undefined) continue;
+    if (name.startsWith('on')) el.addEventListener(name.slice(2), value);
+    else el.setAttribute(name, value === true ? '' : value);
+  }
+  el.append(...children.flat(Infinity).filter(c => c !== null && c !== undefined && c !== false));
+  return el;
+}
 
-  // escaped text with KEY-N item ids turned into links
+const U = {
+  // text with KEY-N item ids turned into links; returns an array of strings and <a> elements
   richText(text) {
-    return U.esc(text).replace(/\b([A-Z][A-Z0-9]{1,9}-\d+)\b/g, '<a href="#/i/$1">$1</a>');
+    return String(text ?? '').split(/\b([A-Z][A-Z0-9]{1,9}-\d+)\b/).map((part, i) =>
+      i % 2 ? h('a', { href: `#/i/${part}` }, part) : part);
   },
 
   label(enumValue) {
@@ -23,21 +34,22 @@ const U = {
   },
 
   statusBadge(status) {
-    return `<span class="badge st-${U.esc(status)}">${U.esc(U.label(status))}</span>`;
+    return h('span', { class: `badge st-${status}` }, U.label(status));
   },
 
   priority(priority) {
-    return `<span class="pr-${U.esc(priority)}">${U.esc(priority)}</span>`;
+    return h('span', { class: `pr-${priority}` }, priority);
   },
 
+  // an array of chips, ready to spread into h()
   labels(labels) {
-    return (labels || []).map(l => `<span class="badge text-bg-light border label-chip">${U.esc(l)}</span>`).join('');
+    return (labels || []).map(l => h('span', { class: 'badge text-bg-light border label-chip' }, l));
   },
 
+  // an array of <option> elements, ready to spread into h() or replaceChildren()
   options(values, selected, { empty } = {}) {
-    const head = empty === undefined ? '' : `<option value="">${U.esc(empty)}</option>`;
-    return head + values.map(v =>
-      `<option value="${U.esc(v)}"${v === selected ? ' selected' : ''}>${U.esc(U.label(v))}</option>`).join('');
+    const head = empty === undefined ? [] : [h('option', { value: '' }, empty)];
+    return head.concat(values.map(v => h('option', { value: v, selected: v === selected }, U.label(v))));
   },
 
   splitLabels(text) {

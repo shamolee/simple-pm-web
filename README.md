@@ -26,7 +26,7 @@ shared data, so it stays a deliberate `pm` command.
 |---|---|
 | `src/index.html` | Shell: navbar, user picker, main area, "New item" dialog |
 | `src/css/app.css` | Additions to Bootstrap (status and priority colours, table tweaks) |
-| `src/js/util.js` | Escaping, formatting, badges, hash parsing |
+| `src/js/util.js` | `h()` DOM builder, formatting, badges, hash parsing |
 | `src/js/api.js` | REST client (`X-User`, `{"error"}` handling, paging) |
 | `src/js/app.js` | Startup, user picker, alerts, breadcrumbs, router |
 | `src/js/projects.js` | `#/` projects with counts |

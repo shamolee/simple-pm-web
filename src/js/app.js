@@ -12,9 +12,9 @@ const App = {
   async start() {
     // opened from disk (file://): the API calls can't work, so point to the served address instead
     if (location.protocol === 'file:') {
-      document.getElementById('main').innerHTML = `<div class="alert alert-warning">
-        This page must be opened through the simple-pm API, not from disk.
-        Open <a href="http://localhost:5080/app/">http://localhost:5080/app/</a>.</div>`;
+      document.getElementById('main').replaceChildren(h('div', { class: 'alert alert-warning' },
+        'This page must be opened through the simple-pm API, not from disk. Open ',
+        h('a', { href: 'http://localhost:5080/app/' }, 'http://localhost:5080/app/'), '.'));
       return;
     }
     try {
@@ -47,7 +47,7 @@ const App = {
   },
 
   fillUserPicker() {
-    document.getElementById('user-picker').innerHTML = U.options(App.userNames(), Api.user, { empty: '(read-only)' });
+    document.getElementById('user-picker').replaceChildren(...U.options(App.userNames(), Api.user, { empty: '(read-only)' }));
   },
 
   // switches the acting user, remembers it and redraws the view (buttons depend on it)
@@ -66,32 +66,30 @@ const App = {
     const { parts, query } = U.parseHash(location.hash);
     const main = document.getElementById('main');
     App.clearAlerts();
-    main.innerHTML = '<div class="text-body-secondary">Loading…</div>';
+    main.replaceChildren(h('div', { class: 'text-body-secondary' }, 'Loading…'));
     try {
       if (parts[0] === 'p' && parts[1]) await ProjectView.render(main, seq, parts[1], query);
       else if (parts[0] === 'i' && parts[1]) await ItemView.render(main, seq, parts[1]);
       else await ProjectsView.render(main, seq);
     } catch (e) {
-      if (App.isCurrent(seq)) { main.innerHTML = ''; App.error(e); }
+      if (App.isCurrent(seq)) { main.replaceChildren(); App.error(e); }
     }
   },
 
   isCurrent: seq => seq === App.seq,
 
   crumbs(list) {
-    document.getElementById('crumbs').innerHTML = list.map(([text, href]) => href
-      ? `<li class="breadcrumb-item"><a href="${U.esc(href)}">${U.esc(text)}</a></li>`
-      : `<li class="breadcrumb-item active" aria-current="page">${U.esc(text)}</li>`).join('');
+    document.getElementById('crumbs').replaceChildren(...list.map(([text, href]) => href
+      ? h('li', { class: 'breadcrumb-item' }, h('a', { href }, text))
+      : h('li', { class: 'breadcrumb-item active', 'aria-current': 'page' }, text)));
     document.title = list.length ? list[list.length - 1][0] + ' · simple-pm' : 'simple-pm';
   },
 
   error(e) { App.alert(e.message || String(e), 'danger'); },
 
   alert(text, kind = 'success') {
-    const box = document.createElement('div');
-    box.className = `alert alert-${kind} alert-dismissible`;
-    box.setAttribute('role', 'alert');
-    box.innerHTML = `${U.esc(text)}<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>`;
+    const box = h('div', { class: `alert alert-${kind} alert-dismissible`, role: 'alert' }, text,
+      h('button', { type: 'button', class: 'btn-close', 'data-bs-dismiss': 'alert', 'aria-label': 'Close' }));
     document.getElementById('alerts').append(box);
     if (kind !== 'danger') setTimeout(() => box.remove(), 3000);
   },
